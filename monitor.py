@@ -36,7 +36,7 @@ def main():
         "curl",
         "-k",
         "-s",
-        "-m", "15",
+        "-m", "40",
         "-H", "User-Agent: Mozilla/5.0",
         url,
     ]
