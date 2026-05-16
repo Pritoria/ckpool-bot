@@ -41,11 +41,6 @@ def main():
         url,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-response_text = result.stdout.strip()
-
-print("Время ответа пула:", response_text)
-
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         response_text = result.stdout.strip()
