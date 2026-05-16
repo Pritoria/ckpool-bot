@@ -9,9 +9,7 @@ BTC_ADDRESS = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
 
 
 def send_telegram(text):
-    # Прямая сборка строки URL во избежание синтаксических ошибок
     url = "https://telegram.org" + BOT_TOKEN + "/sendMessage"
-
     payload = json.dumps(
         {"chat_id": USER_ID, "text": text, "parse_mode": "Markdown"}
     ).encode("utf-8")
@@ -19,26 +17,32 @@ def send_telegram(text):
         url, data=payload, headers={"Content-Type": "application/json"}
     )
 
-    # Игнорируем проверку SSL для Telegram
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
     try:
         urllib.request.urlopen(req, context=ctx, timeout=10)
-        print("Успех: Сообщение успешно доставлено в Telegram!")
+        print("Успех: Сигнал отправлен в Telegram!")
     except Exception as e:
         print("Ошибка отправки в TG: " + str(e))
 
 
 def main():
-    print("Запуск опроса нового API пула...")
+    print("Запуск опроса нового API пула по прямому IP...")
 
-    # ИСПОЛЬЗУЕМ НОВЫЙ АКТУАЛЬНЫЙ АДРЕС API, КОТОРЫЙ ВЫ НАШЛИ
-    url = "https://ckpool.org" + BTC_ADDRESS
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    # ИСПРАВЛЕНО: Направляем запрос напрямую на рабочий IP-адрес нового сервера статистики 176.9.231.135
+    url = "https://176.9.231" + BTC_ADDRESS
 
-    # Игнорируем проверку SSL для пула (убирает ошибку Name or service not known)
+    # Обязательно передаем правильный Host, чтобы веб-сервер пула понял, какой сайт мы запрашиваем
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Host": "eusolostats.ckpool.org",
+        },
+    )
+
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -47,11 +51,10 @@ def main():
         with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
             data = json.loads(response.read().decode("utf-8"))
     except Exception as e:
-        print("Ошибка запроса к пулу: " + str(e))
+        print("Ошибка запроса к пулу по IP: " + str(e))
         return
 
     if data:
-        # Считываем переменные по новому стандарту движка CKPool
         workers = data.get("workerCount", 0)
         hashrate = data.get("hashrate1hr", "0")
 
