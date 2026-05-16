@@ -113,16 +113,20 @@ def main():
     hashrate = data.get("hashrate1hr", "0")
     shares = data.get("shares", 0)
     bestshare = data.get("bestshare", 0)
+    bestever = data.get("bestever", 0)
+    lastshare = data.get("lastshare", "нет данных")
 
     msg = (
         "🚀 Мониторинг CKPool\n\n"
         f"🔹 Активных воркеров: *{workers}*\n"
         f"🔹 Хешрейт (1ч): *{hashrate}*\n"
         f"🔹 Shares: *{shares}*\n"
-        f"🔹 Bestshare: *{bestshare}*"
+        f"🔹 Bestshare: *{bestshare}*\n"
+        f"🔹 Bestever: *{bestever}*\n"
+        f"🔹 Lastshare: *{lastshare}*"
     )
     send_telegram_text(msg)
-    log_event(f"Workers={workers}, Hashrate={hashrate}, Shares={shares}, Bestshare={bestshare}")
+    log_event(f"Workers={workers}, Hashrate={hashrate}, Shares={shares}, Bestshare={bestshare}, Bestever={bestever}, Lastshare={lastshare}")
 
     # Дополнительно можно прикрепить лог или фото:
     # send_telegram_document(LOG_FILE, "История мониторинга")
