@@ -4,20 +4,21 @@ import urllib.request
 
 
 def send_telegram(text):
-    # Прямой URL API Telegram
+    # Твой токен и ID
     bot_token = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
     user_id = "634135028"
 
-    url = "https://telegram.org" + bot_token + "/sendMessage"
+    # Правильный URL для Telegram Bot API
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = json.dumps(
         {"chat_id": user_id, "text": text, "parse_mode": "Markdown"}
     ).encode("utf-8")
+
     req = urllib.request.Request(
         url, data=payload, headers={"Content-Type": "application/json"}
     )
 
     try:
-        # Отправляем в TG через стандартный urllib (к Telegram DNS работает нормально)
         urllib.request.urlopen(req, timeout=10)
         print("Успех: Сообщение успешно доставлено в Telegram!")
     except Exception as e:
@@ -28,26 +29,26 @@ def main():
     print("Запуск опроса нового API пула через системный cURL...")
 
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
-    url = "https://176.9.231" + btc_address
 
-    # Используем системный cURL в обход всех багов Python DNS.
-    # Флаг -k отключает проверку SSL, а -H передает правильный Host домена.
+    # Основной URL API CKPool
+    url = f"https://eusolostats.ckpool.org/users/{btc_address}"
+
+    # Если DNS не работает, можно использовать IP + Host заголовок:
+    # url = f"https://176.9.231.45/users/{btc_address}"
+    # cmd = ["curl", "-k", "-s", "-m", "15", "-H", "Host: eusolostats.ckpool.org", url]
+
     cmd = [
         "curl",
         "-k",
         "-s",
-        "-m",
-        "15",
-        "-H",
-        "Host: eusolostats.ckpool.org",
-        "-H",
-        "User-Agent: Mozilla/5.0",
+        "-m", "15",
+        "-H", "User-Agent: Mozilla/5.0",
         url,
     ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        response_text = result.stdout
+        response_text = result.stdout.strip()
         data = json.loads(response_text)
     except Exception as e:
         print("Критическая ошибка cURL запроса к пулу: " + str(e))
@@ -59,8 +60,8 @@ def main():
 
         msg = (
             "🚀 **Облачный мониторинг CKPool успешно запущен!**\n\n"
-            "🔹 Активных воркеров: *" + str(workers) + "*\n"
-            "🔹 Хешрейт (1ч): *" + str(hashrate) + "*"
+            f"🔹 Активных воркеров: *{workers}*\n"
+            f"🔹 Хешрейт (1ч): *{hashrate}*"
         )
         send_telegram(msg)
     else:
