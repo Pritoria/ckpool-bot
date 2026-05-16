@@ -1,57 +1,56 @@
 import json
-import ssl
+import subprocess
 import urllib.request
-
-# --- НАСТРОЙКИ ---
-BOT_TOKEN = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
-USER_ID = "634135028"
-BTC_ADDRESS = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
 
 
 def send_telegram(text):
-    url = "https://telegram.org" + BOT_TOKEN + "/sendMessage"
+    # Прямой URL API Telegram
+    bot_token = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
+    user_id = "634135028"
+
+    url = "https://telegram.org" + bot_token + "/sendMessage"
     payload = json.dumps(
-        {"chat_id": USER_ID, "text": text, "parse_mode": "Markdown"}
+        {"chat_id": user_id, "text": text, "parse_mode": "Markdown"}
     ).encode("utf-8")
     req = urllib.request.Request(
         url, data=payload, headers={"Content-Type": "application/json"}
     )
 
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
     try:
-        urllib.request.urlopen(req, context=ctx, timeout=10)
-        print("Успех: Сигнал отправлен в Telegram!")
+        # Отправляем в TG через стандартный urllib (к Telegram DNS работает нормально)
+        urllib.request.urlopen(req, timeout=10)
+        print("Успех: Сообщение успешно доставлено в Telegram!")
     except Exception as e:
         print("Ошибка отправки в TG: " + str(e))
 
 
 def main():
-    print("Запуск опроса нового API пула по прямому IP...")
+    print("Запуск опроса нового API пула через системный cURL...")
 
-    # ИСПРАВЛЕНО: Направляем запрос напрямую на рабочий IP-адрес нового сервера статистики 176.9.231.135
-    url = "https://176.9.231" + BTC_ADDRESS
+    btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
+    url = "https://176.9.231" + btc_address
 
-    # Обязательно передаем правильный Host, чтобы веб-сервер пула понял, какой сайт мы запрашиваем
-    req = urllib.request.Request(
+    # Используем системный cURL в обход всех багов Python DNS.
+    # Флаг -k отключает проверку SSL, а -H передает правильный Host домена.
+    cmd = [
+        "curl",
+        "-k",
+        "-s",
+        "-m",
+        "15",
+        "-H",
+        "Host: eusolostats.ckpool.org",
+        "-H",
+        "User-Agent: Mozilla/5.0",
         url,
-        headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Host": "eusolostats.ckpool.org",
-        },
-    )
-
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    ]
 
     try:
-        with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
-            data = json.loads(response.read().decode("utf-8"))
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        response_text = result.stdout
+        data = json.loads(response_text)
     except Exception as e:
-        print("Ошибка запроса к пулу по IP: " + str(e))
+        print("Критическая ошибка cURL запроса к пулу: " + str(e))
         return
 
     if data:
@@ -65,7 +64,7 @@ def main():
         )
         send_telegram(msg)
     else:
-        print("Пул вернул пустой ответ.")
+        print("Пул вернул пустой ответ через cURL.")
 
 
 if __name__ == "__main__":
