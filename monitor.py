@@ -30,18 +30,20 @@ def main():
     print("Запуск опроса нового европейского API пула...")
 
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
-    url = f"https://ckpool.org/users/{btc_address}"
+    url = f"https://eusolo.ckpool.org/users/{btc_address}"
 
-    # Добавляем -w "%{time_total}" чтобы измерить время ответа
     cmd = [
-        "curl",
-        "-k",
-        "-s",
-        "-m", "40",
-        "-w", "%{time_total}",
-        "-H", "User-Agent: Mozilla/5.0",
-        url,
-    ]
+    "curl",
+    "-k",
+    "-s",
+    "--connect-timeout", "10",   # максимум 10 секунд на установку соединения
+    "--retry", "3",              # до 3 попыток
+    "--retry-delay", "5",        # пауза 5 секунд
+    "-m", "40",                  # общий лимит 40 секунд
+    "-H", "User-Agent: Mozilla/5.0",
+    url,
+]
+
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
