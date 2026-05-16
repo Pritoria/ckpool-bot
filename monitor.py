@@ -2,10 +2,9 @@ import json
 import subprocess
 import urllib.request
 
-
 def send_telegram(text):
     bot_token = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
-    user_id = 634135028  # без кавычек, как число
+    user_id = 634135028  # как число, не строка
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
@@ -20,12 +19,10 @@ def send_telegram(text):
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"}
         )
-        urllib.request.urlopen(req, timeout=10)
+        resp = urllib.request.urlopen(req, timeout=10)
         print("Успех: Сообщение успешно доставлено в Telegram!")
     except Exception as e:
         print("Ошибка отправки в TG: " + str(e))
-
-
 
 def main():
     print("Запуск опроса нового API пула через системный cURL...")
