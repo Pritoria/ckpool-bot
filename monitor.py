@@ -13,39 +13,6 @@ def send_telegram_text(text):
     payload = {"chat_id": USER_ID, "text": text, "parse_mode": "Markdown"}
     _post(url, payload)
 
-def send_telegram_document(file_path, caption=""):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
-    with open(file_path, "rb") as f:
-        data = f.read()
-    req = urllib.request.Request(
-        url + f"?chat_id={USER_ID}&caption={caption}",
-        data=data,
-        headers={"Content-Type": "multipart/form-data"}
-    )
-    urllib.request.urlopen(req, timeout=20)
-
-def send_telegram_photo(file_path, caption=""):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
-    with open(file_path, "rb") as f:
-        data = f.read()
-    req = urllib.request.Request(
-        url + f"?chat_id={USER_ID}&caption={caption}",
-        data=data,
-        headers={"Content-Type": "multipart/form-data"}
-    )
-    urllib.request.urlopen(req, timeout=20)
-
-def send_telegram_buttons(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    keyboard = {
-        "inline_keyboard": [
-            [{"text": "Обновить", "callback_data": "refresh"}],
-            [{"text": "Показать лог", "callback_data": "show_log"}]
-        ]
-    }
-    payload = {"chat_id": USER_ID, "text": text, "reply_markup": json.dumps(keyboard)}
-    _post(url, payload)
-
 def _post(url, payload):
     try:
         req = urllib.request.Request(
@@ -95,21 +62,14 @@ def main():
             return
 
         data = json.loads(response_text)
-    except subprocess.CalledProcessError as e:
-        if e.returncode == 28:
-            msg = "⚠️ Пул не ответил за 40 секунд (timeout)."
-        else:
-            msg = "❌ Ошибка запроса к пулу: " + str(e)
-        send_telegram_text(msg)
-        log_event(msg)
-        return
     except Exception as e:
-        msg = "❌ Общая ошибка: " + str(e)
+        msg = "❌ Ошибка: " + str(e)
         send_telegram_text(msg)
         log_event(msg)
         return
 
-    workers = data.get("workerCount", data.get("workers", 0))
+    # Общая статистика
+    workers = data.get("workerCount", 0)
     hashrate1h = data.get("hashrate1hr", "0")
     hashrate24h = data.get("hashrate24hr", "0")
     shares = data.get("shares", 0)
@@ -120,13 +80,10 @@ def main():
     lastshare_ts = data.get("lastshare", 0)
 
     if lastshare_ts:
-        try:
-            dt = datetime.datetime.utcfromtimestamp(lastshare_ts)
-            lastshare_human = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-            minutes_ago = int((datetime.datetime.utcnow() - dt).total_seconds() / 60)
-            lastshare_human += f" ({minutes_ago} мин назад)"
-        except Exception:
-            lastshare_human = str(lastshare_ts)
+        dt = datetime.datetime.utcfromtimestamp(lastshare_ts)
+        lastshare_human = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+        minutes_ago = int((datetime.datetime.utcnow() - dt).total_seconds() / 60)
+        lastshare_human += f" ({minutes_ago} мин назад)"
     else:
         lastshare_human = "нет данных"
 
@@ -142,13 +99,30 @@ def main():
         f"🔹 Difficulty: *{difficulty}*\n"
         f"🔹 Lastshare: *{lastshare_human}*"
     )
+
+    # --- Детализация по воркерам ---
+    workers_data = data.get("workers", {})
+    for name, stats in workers_data.items():
+        w_hashrate = stats.get("hashrate1hr", "0")
+        w_shares = stats.get("shares", 0)
+        w_bestshare = stats.get("bestshare", 0)
+        w_lastshare_ts = stats.get("lastshare", 0)
+
+        if w_lastshare_ts:
+            dt = datetime.datetime.utcfromtimestamp(w_lastshare_ts)
+            w_lastshare_human = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+            minutes_ago = int((datetime.datetime.utcnow() - dt).total_seconds() / 60)
+            w_lastshare_human += f" ({minutes_ago} мин назад)"
+        else:
+            w_lastshare_human = "нет данных"
+
+        msg += (
+            f"\n\n👷 Воркер: *{name}*\n"
+            f"   🔹 Хешрейт (1ч): *{w_hashrate}*\n"
+            f"   🔹 Shares: *{w_shares}*\n"
+            f"   🔹 Bestshare: *{w_bestshare}*\n"
+            f"   🔹 Lastshare: *{w_lastshare_human}*"
+        )
+
     send_telegram_text(msg)
-    log_event(f"Workers={workers}, Hashrate1h={hashrate1h}, Hashrate24h={hashrate24h}, Shares={shares}, StaleShares={staleShares}, Bestshare={bestshare}, Bestever={bestever}, Difficulty={difficulty}, Lastshare={lastshare_human}")
-
-    # Дополнительно можно прикрепить лог или фото:
-    # send_telegram_document(LOG_FILE, "История мониторинга")
-    # send_telegram_photo("graph.png", "График хешрейта")
-    # send_telegram_buttons("Выберите действие:")
-
-if __name__ == "__main__":
-    main()
+    log_event(msg.replace
