@@ -67,4 +67,60 @@ def main():
     bestever = data.get("bestever", 0)
 
     msg = (
+        "🚀 Мониторинг CKPool\n\n"
+        f"🔹 Активных воркеров: *{workers_count}*\n"
+        f"🔹 Хешрейт (1ч): *{hashrate1h}*\n"
+        f"🔹 Shares: *{shares}*\n"
+        f"🔹 Bestshare: *{bestshare}*\n"
+        f"🔹 Bestever: *{bestever}*"
+    )
+
+    # --- Детализация по воркерам ---
+    workers_data = data.get("workers", {})
+    if isinstance(workers_data, dict):
+        for name, stats in workers_data.items():
+            w_hashrate = stats.get("hashrate1hr", "0")
+            w_shares = stats.get("shares", 0)
+            w_bestshare = stats.get("bestshare", 0)
+            w_lastshare_ts = stats.get("lastshare", 0)
+
+            if w_lastshare_ts:
+                dt = datetime.datetime.utcfromtimestamp(w_lastshare_ts)
+                w_lastshare_human = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+                minutes_ago = int((datetime.datetime.utcnow() - dt).total_seconds() / 60)
+                w_lastshare_human += f" ({minutes_ago} мин назад)"
+            else:
+                w_lastshare_human = "нет данных"
+                minutes_ago = None
+
+            msg += (
+                f"\n\n👷 Воркер: *{name}*\n"
+                f"   🔹 Хешрейт (1ч): *{w_hashrate}*\n"
+                f"   🔹 Shares: *{w_shares}*\n"
+                f"   🔹 Bestshare: *{w_bestshare}*\n"
+                f"   🔹 Lastshare: *{w_lastshare_human}*"
+            )
+
+            # --- Автоматический алерт ---
+            if parse_hashrate(w_hashrate) < 4e12 or (minutes_ago is not None and minutes_ago > 30):
+                alert = (
+                    f"⚠️ Воркер {name} неактивен или ниже порога!\n"
+                    f"   Хешрейт: {w_hashrate}\n"
+                    f"   Последний share: {w_lastshare_human}"
+                )
+                send_telegram_text(alert)
+                log_event("ALERT: " + alert)
+
+    # Если пул показывает workers=0, но есть хешрейт > 0
+    if workers_count == 0 and parse_hashrate(hashrate1h) > 0:
+        alert = "⚠️ Пул не показывает воркеров, но хешрейт есть!"
+        send_telegram_text(alert)
+        log_event("ALERT: " + alert)
+
+    send_telegram_text(msg)
+    log_event(msg.replace("\n", " "))
+
+if __name__ == "__main__":
+    main()
+
 
