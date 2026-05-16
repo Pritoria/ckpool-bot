@@ -97,4 +97,33 @@ def main():
         data = json.loads(response_text)
     except subprocess.CalledProcessError as e:
         if e.returncode == 28:
-            msg = "⚠️ Пул не ответил за 40 секунд
+            msg = "⚠️ Пул не ответил за 40 секунд (timeout)."
+        else:
+            msg = "❌ Ошибка запроса к пулу: " + str(e)
+        send_telegram_text(msg)
+        log_event(msg)
+        return
+    except Exception as e:
+        msg = "❌ Общая ошибка: " + str(e)
+        send_telegram_text(msg)
+        log_event(msg)
+        return
+
+    workers = data.get("workerCount", data.get("workers", 0))
+    hashrate = data.get("hashrate1hr", "0")
+
+    msg = (
+        "🚀 Мониторинг CKPool\n\n"
+        f"🔹 Активных воркеров: *{workers}*\n"
+        f"🔹 Хешрейт (1ч): *{hashrate}*"
+    )
+    send_telegram_text(msg)
+    log_event(f"Workers={workers}, Hashrate={hashrate}")
+
+    # Дополнительно можно прикрепить лог или фото:
+    # send_telegram_document(LOG_FILE, "История мониторинга")
+    # send_telegram_photo("graph.png", "График хешрейта")
+    # send_telegram_buttons("Выберите действие:")
+
+if __name__ == "__main__":
+    main()
