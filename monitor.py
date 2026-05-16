@@ -4,11 +4,9 @@ import urllib.request
 
 
 def send_telegram(text):
-    # Твой токен и ID
     bot_token = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
     user_id = "634135028"
 
-    # Правильный URL для Telegram Bot API
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = json.dumps(
         {"chat_id": user_id, "text": text, "parse_mode": "Markdown"}
@@ -30,10 +28,10 @@ def main():
 
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
 
-    # Основной URL API CKPool
+    # Вариант через домен
     url = f"https://eusolostats.ckpool.org/users/{btc_address}"
 
-    # Если DNS не работает, можно использовать IP + Host заголовок:
+    # Если DNS не работает, можно использовать IP:
     # url = f"https://176.9.231.45/users/{btc_address}"
     # cmd = ["curl", "-k", "-s", "-m", "15", "-H", "Host: eusolostats.ckpool.org", url]
 
