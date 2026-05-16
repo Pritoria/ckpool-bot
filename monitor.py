@@ -75,10 +75,16 @@ def main():
         f"🔹 Bestever: *{bestever}*"
     )
 
-    # --- Детализация по воркерам ---
+    # --- Жёстко прописанные воркеры ---
+    worker_names = [
+        "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu.miner1",
+        "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu.miner2"
+    ]
+
     workers_data = data.get("workers", {})
     if isinstance(workers_data, dict):
-        for name, stats in workers_data.items():
+        for name in worker_names:
+            stats = workers_data.get(name, {})
             w_hashrate = stats.get("hashrate1hr", "0")
             w_shares = stats.get("shares", 0)
             w_bestshare = stats.get("bestshare", 0)
@@ -122,3 +128,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
