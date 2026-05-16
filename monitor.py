@@ -7,6 +7,7 @@ BOT_TOKEN = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
 USER_ID = 634135028
 LOG_FILE = "monitor.log"
 
+# --- Telegram ---
 def send_telegram_text(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": USER_ID, "text": text, "parse_mode": "Markdown"}
@@ -89,9 +90,14 @@ def main():
                 send_telegram_text(alert)
                 log_event("ALERT: " + alert)
 
+    # Если пул показывает workers=0, но есть хешрейт > 0
+    if workers_count == 0 and float(hashrate1h) > 0:
+        alert = "⚠️ Пул не показывает воркеров, но хешрейт есть!"
+        send_telegram_text(alert)
+        log_event("ALERT: " + alert)
+
     send_telegram_text(msg)
     log_event(msg.replace("\n", " "))
 
 if __name__ == "__main__":
     main()
-
