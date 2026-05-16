@@ -47,7 +47,7 @@ def main():
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
 
     # Вариант через домен
-    url = f"https://eusolostats.ckpool.org/users/{btc_address}"
+    url = f"https://eusolo.ckpool.org//users/{btc_address}"
 
     # Если DNS не работает, можно использовать IP:
     # url = f"https://176.9.231.45/users/{btc_address}"
