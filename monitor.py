@@ -1,21 +1,3 @@
-try:
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    response_text = result.stdout.strip()
-
-    if not response_text:
-        print("Пул вернул пустой ответ.")
-        return
-
-    # Проверим, что ответ начинается с '{'
-    if not response_text.startswith("{"):
-        print("Пул вернул не JSON, а другой формат:\n", response_text[:200])
-        return
-
-    data = json.loads(response_text)
-except Exception as e:
-    print("Критическая ошибка cURL запроса к пулу: " + str(e))
-    return
-
 import json
 import subprocess
 import urllib.request
@@ -45,13 +27,7 @@ def main():
     print("Запуск опроса нового API пула через системный cURL...")
 
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
-
-    # Вариант через домен
-    url = f"https://eusolo.ckpool.org//users/{btc_address}"
-
-    # Если DNS не работает, можно использовать IP:
-    # url = f"https://176.9.231.45/users/{btc_address}"
-    # cmd = ["curl", "-k", "-s", "-m", "15", "-H", "Host: eusolostats.ckpool.org", url]
+    url = f"https://eusolostats.ckpool.org/users/{btc_address}"
 
     cmd = [
         "curl",
@@ -65,23 +41,29 @@ def main():
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         response_text = result.stdout.strip()
+
+        if not response_text:
+            send_telegram("⚠️ Пул недоступен или вернул пустой ответ.")
+            return
+
+        if not response_text.startswith("{"):
+            send_telegram("⚠️ Пул вернул не JSON. Ответ:\n" + response_text[:200])
+            return
+
         data = json.loads(response_text)
     except Exception as e:
-        print("Критическая ошибка cURL запроса к пулу: " + str(e))
+        send_telegram("❌ Ошибка запроса к пулу: " + str(e))
         return
 
-    if data:
-        workers = data.get("workerCount", 0)
-        hashrate = data.get("hashrate1hr", "0")
+    workers = data.get("workerCount", 0)
+    hashrate = data.get("hashrate1hr", "0")
 
-        msg = (
-            "🚀 **Облачный мониторинг CKPool успешно запущен!**\n\n"
-            f"🔹 Активных воркеров: *{workers}*\n"
-            f"🔹 Хешрейт (1ч): *{hashrate}*"
-        )
-        send_telegram(msg)
-    else:
-        print("Пул вернул пустой ответ через cURL.")
+    msg = (
+        "🚀 **Облачный мониторинг CKPool успешно запущен!**\n\n"
+        f"🔹 Активных воркеров: *{workers}*\n"
+        f"🔹 Хешрейт (1ч): *{hashrate}*"
+    )
+    send_telegram(msg)
 
 
 if __name__ == "__main__":
