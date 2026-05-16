@@ -1,4 +1,5 @@
 import json
+import sys
 import urllib.request
 
 # --- НАСТРОЙКИ ---
@@ -17,34 +18,38 @@ def send_telegram(text):
     )
     try:
         urllib.request.urlopen(req, timeout=10)
-    except:
-        pass
+        print("Сигнал отправки передан в Telegram.")
+    except Exception as e:
+        print(f"Критическая ошибка отправки в TG: {e}")
 
 
 def main():
-    # Напрямую опрашиваем европейское зеркало пула
+    print("Запуск опроса пула...")
     url = f"https://ckpool.org{BTC_ADDRESS}"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
 
     try:
         with urllib.request.urlopen(req, timeout=10) as response:
             data = json.loads(response.read().decode("utf-8"))
-    except:
-        data = None
+    except Exception as e:
+        print(f"Ошибка запроса к пулу: {e}")
+        send_telegram(f"⚠️ Облако не смогло достучаться до CKPool. Ошибка: {e}")
+        sys.exit(0)
 
     if data:
         hashrate = data.get("hashrate1m", "0")
         workers = data.get("workers", 0)
 
-        # Облачный бот сразу пришлет статус фермы при запуске
         msg = (
-            f"🤖 **Мониторинг CKPool запущен в облаке!**\n\n"
+            f"🤖 **Мониторинг CKPool работает!**\n\n"
             f"🔹 Активных воркеров: *{workers}*\n"
-            f"🔹 Текущий хешрейт: *{hashrate}*\n\n"
-            f"Если воркеров станет 0, бот пришлет критическое уведомление."
+            f"🔹 Текущий хешрейт: *{hashrate}*"
         )
         send_telegram(msg)
+    else:
+        send_telegram("⚠️ Пул вернул пустой ответ (json равен null).")
 
 
 if __name__ == "__main__":
     main()
+
