@@ -30,41 +30,56 @@ def main():
     print("Запуск опроса нового европейского API пула...")
 
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
-    url = f"https://ckpool.org/users/{btc_address}"  # ← исправлено
+    url = f"https://ckpool.org/users/{btc_address}"
 
+    # Добавляем -w "%{time_total}" чтобы измерить время ответа
     cmd = [
         "curl",
         "-k",
         "-s",
         "-m", "40",
+        "-w", "%{time_total}",
         "-H", "User-Agent: Mozilla/5.0",
         url,
     ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        response_text = result.stdout.strip()
+        output = result.stdout.strip()
+
+        # Последние цифры — это время ответа
+        if "\n" in output:
+            response_text, time_total = output.rsplit("\n", 1)
+        else:
+            response_text, time_total = output, "?"
 
         if not response_text:
-            send_telegram("⚠️ Пул недоступен или вернул пустой ответ.")
+            send_telegram(f"⚠️ Пул недоступен или вернул пустой ответ.\n⏱ Время ответа: {time_total} сек.")
             return
 
         if not response_text.startswith("{"):
-            send_telegram("⚠️ Пул вернул не JSON. Ответ:\n" + response_text[:200])
+            send_telegram(f"⚠️ Пул вернул не JSON.\n⏱ Время ответа: {time_total} сек.\nОтвет:\n{response_text[:200]}")
             return
 
         data = json.loads(response_text)
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 28:
+            send_telegram("⚠️ Пул не ответил за 40 секунд (timeout).")
+        else:
+            send_telegram("❌ Ошибка запроса к пулу: " + str(e))
+        return
     except Exception as e:
-        send_telegram("❌ Ошибка запроса к пулу: " + str(e))
+        send_telegram("❌ Общая ошибка: " + str(e))
         return
 
     workers = data.get("workerCount", 0)
     hashrate = data.get("hashrate1hr", "0")
 
     msg = (
-        "🚀 **Облачный мониторинг CKPool успешно запущен!**\n\n"
+        "🚀 **Мониторинг CKPool**\n\n"
         f"🔹 Активных воркеров: *{workers}*\n"
-        f"🔹 Хешрейт (1ч): *{hashrate}*"
+        f"🔹 Хешрейт (1ч): *{hashrate}*\n"
+        f"⏱ Время ответа пула: {time_total} сек."
     )
     send_telegram(msg)
 
