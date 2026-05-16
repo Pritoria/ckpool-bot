@@ -55,7 +55,7 @@ def main():
 
     # --- Детализация по воркерам ---
     workers_data = data.get("workers", {})
-    if isinstance(workers_data, dict):  # только если это словарь
+    if isinstance(workers_data, dict):
         for name, stats in workers_data.items():
             w_hashrate = stats.get("hashrate1hr", "0")
             w_shares = stats.get("shares", 0)
