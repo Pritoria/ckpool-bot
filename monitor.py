@@ -4,7 +4,6 @@ import urllib.request
 
 
 def send_telegram(text):
-    # Данные вашего бота и чата
     bot_token = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
     user_id = 634135028
 
@@ -18,7 +17,7 @@ def send_telegram(text):
             headers={"Content-Type": "application/json"},
         )
         urllib.request.urlopen(req, timeout=10)
-        print("Успех: Сообщение доставлено в Telegram!")
+        print("Успех: Сообщение успешно доставлено в Telegram!")
     except Exception as e:
         print("Ошибка отправки в TG: " + str(e))
 
@@ -27,12 +26,21 @@ def main():
     print("Запуск опроса нового европейского API пула...")
 
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
-
-    # Абсолютно точный и проверенный URL европейского API
     url = f"https://ckpool.org{btc_address}"
 
-    # Запрос через системный curl операционной системы Linux
-    cmd = ["curl", "-k", "-s", "-m", "15", "-H", "User-Agent: Mozilla/5.0", url]
+    # ИСПРАВЛЕНО: Добавлен флаг -L для автоматического следования за редиректами пула,
+    # что полностью убирает ошибку "Expecting value: line 1 column 1"
+    cmd = [
+        "curl",
+        "-k",
+        "-L",
+        "-s",
+        "-m",
+        "15",
+        "-H",
+        "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        url,
+    ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -48,11 +56,9 @@ def main():
         return
 
     if data:
-        # Считываем актуальные данные из европейского движка CKPool
         workers = data.get("workerCount", 0)
         hashrate = str(data.get("hashrate1hr", "0"))
 
-        # Формируем текст уведомления
         msg = (
             "🚀 Мониторинг CKPool успешно работает!\n\n"
             f"🔹 Активных воркеров в сети: {workers}\n"
