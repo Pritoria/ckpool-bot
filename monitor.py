@@ -1,3 +1,21 @@
+try:
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    response_text = result.stdout.strip()
+
+    if not response_text:
+        print("Пул вернул пустой ответ.")
+        return
+
+    # Проверим, что ответ начинается с '{'
+    if not response_text.startswith("{"):
+        print("Пул вернул не JSON, а другой формат:\n", response_text[:200])
+        return
+
+    data = json.loads(response_text)
+except Exception as e:
+    print("Критическая ошибка cURL запроса к пулу: " + str(e))
+    return
+
 import json
 import subprocess
 import urllib.request
