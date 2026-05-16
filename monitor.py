@@ -23,6 +23,27 @@ def log_event(message):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{timestamp}] {message}\n")
 
+# --- Парсер хешрейта ---
+def parse_hashrate(value):
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str):
+        return 0.0
+    val = value.upper().strip()
+    try:
+        if val.endswith("T"):
+            return float(val[:-1]) * 1e12
+        elif val.endswith("G"):
+            return float(val[:-1]) * 1e9
+        elif val.endswith("M"):
+            return float(val[:-1]) * 1e6
+        elif val.endswith("K"):
+            return float(val[:-1]) * 1e3
+        else:
+            return float(val)
+    except:
+        return 0.0
+
 def main():
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
     url = f"https://eusolo.ckpool.org/users/{btc_address}"
@@ -81,7 +102,7 @@ def main():
             )
 
             # --- Автоматический алерт ---
-            if w_hashrate == "0" or (minutes_ago is not None and minutes_ago > 30):
+            if parse_hashrate(w_hashrate) == 0 or (minutes_ago is not None and minutes_ago > 30):
                 alert = (
                     f"⚠️ Воркер {name} неактивен!\n"
                     f"   Хешрейт: {w_hashrate}\n"
@@ -91,7 +112,7 @@ def main():
                 log_event("ALERT: " + alert)
 
     # Если пул показывает workers=0, но есть хешрейт > 0
-    if workers_count == 0 and float(hashrate1h) > 0:
+    if workers_count == 0 and parse_hashrate(hashrate1h) > 0:
         alert = "⚠️ Пул не показывает воркеров, но хешрейт есть!"
         send_telegram_text(alert)
         log_event("ALERT: " + alert)
