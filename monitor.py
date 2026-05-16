@@ -110,23 +110,40 @@ def main():
         return
 
     workers = data.get("workerCount", data.get("workers", 0))
-    hashrate = data.get("hashrate1hr", "0")
+    hashrate1h = data.get("hashrate1hr", "0")
+    hashrate24h = data.get("hashrate24hr", "0")
     shares = data.get("shares", 0)
+    staleShares = data.get("staleShares", 0)
     bestshare = data.get("bestshare", 0)
     bestever = data.get("bestever", 0)
-    lastshare = data.get("lastshare", "нет данных")
+    difficulty = data.get("difficulty", 0)
+    lastshare_ts = data.get("lastshare", 0)
+
+    if lastshare_ts:
+        try:
+            dt = datetime.datetime.utcfromtimestamp(lastshare_ts)
+            lastshare_human = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+            minutes_ago = int((datetime.datetime.utcnow() - dt).total_seconds() / 60)
+            lastshare_human += f" ({minutes_ago} мин назад)"
+        except Exception:
+            lastshare_human = str(lastshare_ts)
+    else:
+        lastshare_human = "нет данных"
 
     msg = (
         "🚀 Мониторинг CKPool\n\n"
         f"🔹 Активных воркеров: *{workers}*\n"
-        f"🔹 Хешрейт (1ч): *{hashrate}*\n"
+        f"🔹 Хешрейт (1ч): *{hashrate1h}*\n"
+        f"🔹 Хешрейт (24ч): *{hashrate24h}*\n"
         f"🔹 Shares: *{shares}*\n"
+        f"🔹 StaleShares: *{staleShares}*\n"
         f"🔹 Bestshare: *{bestshare}*\n"
         f"🔹 Bestever: *{bestever}*\n"
-        f"🔹 Lastshare: *{lastshare}*"
+        f"🔹 Difficulty: *{difficulty}*\n"
+        f"🔹 Lastshare: *{lastshare_human}*"
     )
     send_telegram_text(msg)
-    log_event(f"Workers={workers}, Hashrate={hashrate}, Shares={shares}, Bestshare={bestshare}, Bestever={bestever}, Lastshare={lastshare}")
+    log_event(f"Workers={workers}, Hashrate1h={hashrate1h}, Hashrate24h={hashrate24h}, Shares={shares}, StaleShares={staleShares}, Bestshare={bestshare}, Bestever={bestever}, Difficulty={difficulty}, Lastshare={lastshare_human}")
 
     # Дополнительно можно прикрепить лог или фото:
     # send_telegram_document(LOG_FILE, "История мониторинга")
