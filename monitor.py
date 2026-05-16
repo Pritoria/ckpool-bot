@@ -28,7 +28,7 @@ def main():
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
 
     # ИСПРАВЛЕНО: Используем чистый официальный API-адрес нового пула без склеек IP
-    url = f"https://ckpool.org{btc_address}"
+    url = f"https://eusolostats.ckpool.org/users/{btc_address}"
 
     cmd = ["curl", "-k", "-s", "-m", "15", "-H", "User-Agent: Mozilla/5.0", url]
 
