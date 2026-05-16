@@ -25,22 +25,17 @@ def send_telegram(text):
 def main():
     print("Запуск опроса нового европейского API пула...")
 
-    btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
-    url = f"https://ckpool.org{btc_address}"
+   btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
+url = f"https://ckpool.org/users/{btc_address}"
 
-    # ИСПРАВЛЕНО: Добавлен флаг -L для автоматического следования за редиректами пула,
-    # что полностью убирает ошибку "Expecting value: line 1 column 1"
-    cmd = [
-        "curl",
-        "-k",
-        "-L",
-        "-s",
-        "-m",
-        "15",
-        "-H",
-        "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        url,
-    ]
+cmd = [
+    "curl",
+    "-k",
+    "-s",
+    "-m", "15",
+    "-H", "User-Agent: Mozilla/5.0",
+    url,
+]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
