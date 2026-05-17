@@ -7,125 +7,131 @@ BOT_TOKEN = "8621424949:AAE0RGMEotmYEfo8I0OYyjB0gX8xPDu6JXw"
 USER_ID = 634135028
 LOG_FILE = "monitor.log"
 
-# --- Telegram ---
+# --- Блок Telegram ---
 def send_telegram_text(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": USER_ID, "text": text, "parse_mode": "Markdown"}
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"}
-    )
-    urllib.request.urlopen(req, timeout=10)
+    _post(url, payload)
 
+def send_telegram_document(file_path, caption=""):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument"
+    with open(file_path, "rb") as f:
+        data = f.read()
+    req = urllib.request.Request(
+        url + f"?chat_id={USER_ID}&caption={caption}",
+        data=data,
+        headers={"Content-Type": "multipart/form-data"}
+    )
+    urllib.request.urlopen(req, timeout=20)
+
+def send_telegram_photo(file_path, caption=""):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    with open(file_path, "rb") as f:
+        data = f.read()
+    req = urllib.request.Request(
+        url + f"?chat_id={USER_ID}&caption={caption}",
+        data=data,
+        headers={"Content-Type": "multipart/form-data"}
+    )
+    urllib.request.urlopen(req, timeout=20)
+
+def send_telegram_buttons(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    keyboard = {
+        "inline_keyboard": [
+            [{"text": "Обновить", "callback_data": "refresh"}],
+            [{"text": "Показать лог", "callback_data": "show_log"}]
+        ]
+    }
+    payload = {"chat_id": USER_ID, "text": text, "reply_markup": json.dumps(keyboard)}
+    _post(url, payload)
+
+def _post(url, payload):
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        urllib.request.urlopen(req, timeout=10)
+        print("Успех: Сообщение доставлено!")
+    except Exception as e:
+        print("Ошибка отправки: " + str(e))
+
+# --- Логирование ---
 def log_event(message):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"[{timestamp}] {message}\n")
 
-# --- Парсер хешрейта ---
-def parse_hashrate(value):
-    if isinstance(value, (int, float)):
-        return float(value)
-    if not isinstance(value, str):
-        return 0.0
-    val = value.upper().strip()
-    try:
-        if val.endswith("T"):
-            return float(val[:-1]) * 1e12
-        elif val.endswith("G"):
-            return float(val[:-1]) * 1e9
-        elif val.endswith("M"):
-            return float(val[:-1]) * 1e6
-        elif val.endswith("K"):
-            return float(val[:-1]) * 1e3
-        else:
-            return float(val)
-    except:
-        return 0.0
-
+# --- Мониторинг CKPool ---
 def main():
     btc_address = "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu"
     url = f"https://eusolo.ckpool.org/users/{btc_address}"
 
-    cmd = ["curl", "-s", url]
+    cmd = [
+        "curl", "-k", "-s",
+        "--connect-timeout", "10",
+        "--retry", "3",
+        "--retry-delay", "5",
+        "-m", "40",
+        "-H", "User-Agent: Mozilla/5.0",
+        url,
+    ]
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        data = json.loads(result.stdout.strip())
+        response_text = result.stdout.strip()
+
+        if not response_text:
+            msg = "⚠️ Пул недоступен или вернул пустой ответ."
+            send_telegram_text(msg)
+            log_event(msg)
+            return
+        if not response_text.startswith("{"):
+            msg = "⚠️ Пул вернул не JSON."
+            send_telegram_text(msg)
+            log_event(msg + " Ответ: " + response_text[:200])
+            return
+
+        data = json.loads(response_text)
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 28:
+            msg = "⚠️ Пул не ответил за 40 секунд (timeout)."
+        else:
+            msg = "❌ Ошибка запроса к пулу: " + str(e)
+        send_telegram_text(msg)
+        log_event(msg)
+        return
     except Exception as e:
-        msg = "❌ Ошибка: " + str(e)
+        msg = "❌ Общая ошибка: " + str(e)
         send_telegram_text(msg)
         log_event(msg)
         return
 
-    # Общая статистика
-    workers_count = data.get("workerCount", 0)
-    hashrate1h = data.get("hashrate1hr", "0")
+    workers = data.get("workerCount", data.get("workers", 0))
+    hashrate = data.get("hashrate1hr", "0")
     shares = data.get("shares", 0)
     bestshare = data.get("bestshare", 0)
     bestever = data.get("bestever", 0)
+    lastshare = data.get("lastshare", "нет данных")
 
     msg = (
         "🚀 Мониторинг CKPool\n\n"
-        f"🔹 Активных воркеров: *{workers_count}*\n"
-        f"🔹 Хешрейт (1ч): *{hashrate1h}*\n"
+        f"🔹 Активных воркеров: *{workers}*\n"
+        f"🔹 Хешрейт (1ч): *{hashrate}*\n"
         f"🔹 Shares: *{shares}*\n"
         f"🔹 Bestshare: *{bestshare}*\n"
-        f"🔹 Bestever: *{bestever}*"
+        f"🔹 Bestever: *{bestever}*\n"
+        f"🔹 Lastshare: *{lastshare}*"
     )
-
-    # --- Жёстко прописанные воркеры ---
-    worker_names = [
-        "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu.miner1",
-        "bc1qr74sk0g8d9tt5549xgp9w8k5l8440qjd8r8dtu.miner2"
-    ]
-
-    workers_data = data.get("workers", {})
-    if isinstance(workers_data, dict):
-        for name in worker_names:
-            stats = workers_data.get(name, {})
-            w_hashrate = stats.get("hashrate1hr", "0")
-            w_shares = stats.get("shares", 0)
-            w_bestshare = stats.get("bestshare", 0)
-            w_lastshare_ts = stats.get("lastshare", 0)
-
-            if w_lastshare_ts:
-                dt = datetime.datetime.utcfromtimestamp(w_lastshare_ts)
-                w_lastshare_human = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-                minutes_ago = int((datetime.datetime.utcnow() - dt).total_seconds() / 60)
-                w_lastshare_human += f" ({minutes_ago} мин назад)"
-            else:
-                w_lastshare_human = "нет данных"
-                minutes_ago = None
-
-            msg += (
-                f"\n\n👷 Воркер: *{name}*\n"
-                f"   🔹 Хешрейт (1ч): *{w_hashrate}*\n"
-                f"   🔹 Shares: *{w_shares}*\n"
-                f"   🔹 Bestshare: *{w_bestshare}*\n"
-                f"   🔹 Lastshare: *{w_lastshare_human}*"
-            )
-
-            # --- Автоматический алерт ---
-            if parse_hashrate(w_hashrate) < 4e12 or (minutes_ago is not None and minutes_ago > 30):
-                alert = (
-                    f"⚠️ Воркер {name} неактивен или ниже порога!\n"
-                    f"   Хешрейт: {w_hashrate}\n"
-                    f"   Последний share: {w_lastshare_human}"
-                )
-                send_telegram_text(alert)
-                log_event("ALERT: " + alert)
-
-    # Если пул показывает workers=0, но есть хешрейт > 0
-    if workers_count == 0 and parse_hashrate(hashrate1h) > 0:
-        alert = "⚠️ Пул не показывает воркеров, но хешрейт есть!"
-        send_telegram_text(alert)
-        log_event("ALERT: " + alert)
-
     send_telegram_text(msg)
-    log_event(msg.replace("\n", " "))
+    log_event(f"Workers={workers}, Hashrate={hashrate}, Shares={shares}, Bestshare={bestshare}, Bestever={bestever}, Lastshare={lastshare}")
+
+    # Дополнительно можно прикрепить лог или фото:
+    # send_telegram_document(LOG_FILE, "История мониторинга")
+    # send_telegram_photo("graph.png", "График хешрейта")
+    # send_telegram_buttons("Выберите действие:")
 
 if __name__ == "__main__":
     main()
-
